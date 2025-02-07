@@ -1,5 +1,16 @@
-nano /etc/netplan
-
+|--------nano /etc/netplan/50-cloud-init.yaml--------|
+network:
+  ethernets:
+    ens18:
+      dhcp4: false
+      addresses: [10.10.10.208/24]
+      routes:
+        - to: default
+          via: 10.10.10.254
+      nameservers:
+        addresses: [10.10.10.254]
+  version: 2
+|-----------------------------------------------------|
 
 |----------nano /etc/bind/ukk-namaKamu.net------------|
 ;
@@ -18,6 +29,7 @@ $TTL    604800
 ; Letak domain atau record
 @       IN      A       10.10.10.110
 www.ukk-randi.net.      IN      CNAME   ukk-randi.net.
+|-----------------------------------------------------|
 
 |-------nano /etc/bind/ukk-namaKamu.net.reverse-------|
 ;
