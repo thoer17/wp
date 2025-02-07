@@ -1,2 +1,102 @@
+nano /etc/netplan/50-cloud-init.yaml
 apt update && apt upgrade -y
+--------------------------------
 apt install bind9 resolvconf dnsutils -y
+apt install php8.3-cli php8.3-fpm php8.3-mysql php8.3-opcache php8.3-mbstring php8.3-xml php8.3-gd php8.3-curl -y
+apt install mariadb-server mariadb-client -y
+apt install nginx -y
+--------------------------------
+cp -R /etc/bind/db.local /etc/bind/ukk-namaKamu.net
+cp -R /etc/bind/db.127 /etc/bind/ukk-namaKamu.net.reverse
+nano /etc/bind/ukk-namaKamu.net
+|-------------------|
+;
+@       IN      NS      ukk-randi.net.
+
+; Letak domain atau record
+@       IN      A       10.10.10.110
+www.ukk-randi.net.      IN      CNAME   ukk-randi.net.
+|-------------------|
+
+nano /etc/bind/ukk-namaKamu.net.reverse
+|-------------------|
+; Letak Pointer
+@       IN      NS      ukk-namaKamu.net.
+XXX     IN      PTR     ukk-namaKamu.net.
+XXX     IN      PTR     www.ukk-namaKamu.net.
+|-------------------|
+
+nano /etc/bind/named.conf.local
+|-------------------|
+// Forward Zone
+zone "ukk-namaKamu.net" {
+        type master;
+        file "/etc/bind/ukk-namaKamu.net";
+};
+
+// Reverse Zone
+zone "10.10.10.in-addr.arpa" {
+        type master;
+        file "/etc/bind/ukk-namaKamu.net.reverse";
+};
+|-------------------|
+
+systemctl restart named.service
+nano /etc/resolv.conf
+|-------------------|
+nameserver ipKamu
+search ukk-namaKamu.net
+|-------------------|
+nslookup //setelah itu atur DNS, Ping CMD//
+
+mysql -u root
+CREATE DATABASE wordpress_db;
+GRANT ALL ON wordpress_db.* TO 'wp_user'@'localhost' IDENTIFIED BY 'ukk-namaKamu' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+EXIT
+
+wget https://wordpress.org/latest.tar.gz
+tar xf latest.tar.gz
+mv wordpress/ /var/www/html/
+cp -R /var/www/html/wordpress/wp-config-sample.php /var/www/html/wordpress/wp-config.php
+nano /var/www/html/wordpress/wp-config.php
+|-------------------|
+define( 'DB_NAME', 'wordpress_db' );
+define( 'DB_USER', 'wp_user' );
+define( 'DB_PASSWORD', 'ukk-namaKamu' );
+|-------------------|
+chown -R www-data:www-data /var/www/html/wordpress/
+nano /etc/nginx/sites-available/ukk-randi.net.conf
+|-------------------|
+server {
+    listen 80;
+    server_name www.ukk-namaKamu.net ukk-namaKamu.net;
+
+    root /var/www/html/wordpress;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~* \.(js|css|jpg|jpeg|png|gif|ico)$ {
+        expires max;
+        log_not_found off;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+|-------------------|
+nginx -t
+ln -s /etc/nginx/sites-available/ukk-randi.net.conf /etc/nginx/sites-enabled/
+systemctl reload nginx.service
+
