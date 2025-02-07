@@ -1,0 +1,93 @@
+nano /etc/netplan
+
+
+|----------nano /etc/bind/ukk-namaKamu.net------------|
+;
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     ukk-randi.net. root.ukk-randi.net. (
+                              2         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      ukk-randi.net.
+
+; Letak domain atau record
+@       IN      A       10.10.10.110
+www.ukk-randi.net.      IN      CNAME   ukk-randi.net.
+
+|-------nano /etc/bind/ukk-namaKamu.net.reverse-------|
+;
+; BIND reverse data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     ukk-randi.net. root.ukk-randi.net. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+; Letak Pointer
+@       IN      NS      ukk-randi.net.
+110     IN      PTR     ukk-randi.net.
+110     IN      PTR     www.ukk-randi.net.
+|-----------------------------------------------------|
+
+|----------nano /etc/bind/named.conf.local------------|
+// Forward Zone
+zone "ukk-namaKamu.net" {
+        type master;
+        file "/etc/bind/ukk-namaKamu.net";
+};
+
+// Reverse Zone
+zone "10.10.10.in-addr.arpa" {
+        type master;
+        file "/etc/bind/ukk-namaKamu.net.reverse";
+};
+
+|---------------nano /etc/resolv.conf-----------------|
+nameserver ipKamu
+search ukk-namaKamu.net
+|-----------------------------------------------------|
+
+|----nano /var/www/html/wordpress/wp-config.php-------|
+define( 'DB_NAME', 'wordpress_db' );
+define( 'DB_USER', 'wp_user' );
+define( 'DB_PASSWORD', 'ukk-namaKamu' );
+|-----------------------------------------------------|
+
+|-nano /etc/nginx/sites-available/ukk-randi.net.conf--|
+server {
+    listen 80;
+    server_name www.ukk-namaKamu.net ukk-namaKamu.net;
+
+    root /var/www/html/wordpress;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~* \.(js|css|jpg|jpeg|png|gif|ico)$ {
+        expires max;
+        log_not_found off;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+|-----------------------------------------------------|
+
+
